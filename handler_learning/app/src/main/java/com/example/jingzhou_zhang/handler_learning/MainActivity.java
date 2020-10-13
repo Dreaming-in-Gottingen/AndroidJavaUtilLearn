@@ -10,6 +10,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.util.Log;
 
 public class MainActivity extends AppCompatActivity {
@@ -19,7 +21,9 @@ public class MainActivity extends AppCompatActivity {
     HandlerThread mHandlerThread;
     TextView text;
     Button button1,button2,button3,button4;
+    ImageButton lock_file;
     int mUpdateCnt;
+    int mLockFlag = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,6 +199,34 @@ public class MainActivity extends AppCompatActivity {
                 //mHandlerThread.quitSafely();
             }
         });
+
+        lock_file = (ImageButton) findViewById(R.id.lock_file);
+        lock_file.getBackground().setAlpha(10);
+        lock_file.bringToFront();
+        lock_file.setImageResource(R.mipmap.lock_off);
+        lock_file.setScaleType(ImageView.ScaleType.FIT_XY);
+        lock_file.setVisibility(View.VISIBLE);
+        lock_file.setEnabled(true);
+        mLockFlag = 0;
+        lock_file.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "[main thread] ImageButton lock_file clicked! cur_state:" + mLockFlag);
+                if (mLockFlag == 0) {
+                    lock_file.setImageResource(R.mipmap.lock_on);
+                    lock_file.setScaleType(ImageView.ScaleType.FIT_XY);
+                    lock_file.setVisibility(View.VISIBLE);
+                    lock_file.setEnabled(false);
+                    mLockFlag = 1;
+                } else {
+                    lock_file.setImageResource(R.mipmap.lock_off);
+                    lock_file.setScaleType(ImageView.ScaleType.FIT_XY);
+                    lock_file.setVisibility(View.VISIBLE);
+                    mLockFlag = 0;
+                }
+            }
+        });
+
         Log.d(TAG, "onCreate end!");
     }
 

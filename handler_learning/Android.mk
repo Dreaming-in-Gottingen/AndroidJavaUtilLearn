@@ -25,7 +25,7 @@ LOCAL_STATIC_ANDROID_LIBRARIES := \
          android-support-v7-appcompat \
 	 android-support-design
 
-LOCAL_PACKAGE_NAME := HandlerThreadTest 
+LOCAL_PACKAGE_NAME := HandlerThreadTest
 
 include $(BUILD_PACKAGE)
  

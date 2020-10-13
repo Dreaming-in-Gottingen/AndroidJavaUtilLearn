@@ -50,4 +50,12 @@
         android:textAllCaps="false"
         android:text="进入另外一个Activity"/>
         <!-- android:text="结束work线程的消息循环" -->
+
+    <ImageButton
+        android:id="@+id/lock_file"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
 </RelativeLayout>
