@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    tools:context="com.example.control_learning.MainActivity">
+
+    <TextView
+        android:id="@+id/text1"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="测试一些控件的使用(Button/ImageButton/AlertDialog)"/>
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/text1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:text="This is a button"/>
+
+    <ImageButton
+        android:id="@+id/image_button"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button2"
+        android:onClick="showWarningInfo"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/image_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:text="click it, will show AlertDialog!"/>
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:text="disable all buttons"/>
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:text="enable all buttons"/>
+
+</RelativeLayout>
