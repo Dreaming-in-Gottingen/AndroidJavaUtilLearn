@@ -7,8 +7,11 @@ import android.util.Log;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 
 import android.view.View;
+import android.view.Gravity;
+import android.widget.TextView;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -17,18 +20,24 @@ public class MainActivity extends Activity {
     private static final String TAG = "ControlTest";
     private int mBtn1ClickCnt = 0;
     private int mImgBtn1ClickCnt = 0;
+    private TextView tv;
     private Button button1;
     private ImageButton img_button;
-    //private Button button2; //AlertDialog
-    private AlertDialog alertDialog;
     private Button button3;
     private Button button4;
+    private Button button5;
+    private Button button6;
+    private Button button7; //quit button
 
     @Override
     protected void onCreate(Bundle saveInstanceState) {
         Log.d(TAG, "onCreate");
         super.onCreate(saveInstanceState);
         setContentView(R.layout.main_activity);
+
+        //tv = (TextView) findViewById(R.id.textview);
+        //tv.setGravity(Gravity.CENTER);
+        //tv.setGravity(Gravity.CENTER_VERTICAL);
 
         button1 = (Button) findViewById(R.id.button1);
         button1.setOnClickListener(new View.OnClickListener() {
@@ -76,6 +85,49 @@ public class MainActivity extends Activity {
                 img_button.setEnabled(true);
             }
         });
+
+        // start Service
+        button5 = (Button) findViewById(R.id.button5);
+        button5.setText("start Service");
+        button5.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "start Service!");
+                //Intent intent = new Intent(MainActivity.this, ServiceDemo.class);
+                //startService(intent);
+                Intent intent = new Intent(getBaseContext(), MyService.class);
+                startService(intent);
+                //Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                //startActivity(intent);
+                //finish();
+            }
+        });
+
+        // stop Service
+        button6 = (Button) findViewById(R.id.button6);
+        button6.setText("stop Service");
+        button6.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "stop Service!");
+                //Intent intent = new Intent(getBaseContext(), ServiceDemo.class);
+                //stopService(intent);
+                Intent intent = new Intent(getBaseContext(), MyService.class);
+                stopService(intent);
+                //finish();
+            }
+        });
+
+        // quit Activity
+        button7 = (Button) findViewById(R.id.button7);
+        button7.setText("quit Activity");
+        button7.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "quit Activity!");
+                finish();
+            }
+        });
     }
 
     public void showWarningInfo(View view) {
@@ -89,7 +141,6 @@ public class MainActivity extends Activity {
                 Log.d(TAG, "ImageButton-PositiveButton onClick! i=" + i);
             }
         });
-        alertDialog = alert.create();
-        alertDialog.show();
+        alert.create().show();
     }
 }
