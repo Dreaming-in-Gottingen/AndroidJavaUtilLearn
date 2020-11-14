@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.cameratest.MainActivity">
+
+    <TextView
+        android:id="@+id/theme"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="5dp"
+        android:layout_width="100dp"
+        android:layout_height="15dp"
+        android:text="camera test"
+        android:textColor="#FF0000" />
+
+    <SurfaceView
+        android:id="@+id/surview"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="60dp"
+        android:layout_width="300dp"
+        android:layout_height="480dp" />
+        <!--android:layout_width="match_parent" -->
+        <!--android:layout_height="480dp" -->
+        <!--android:layout_centerHorizontal="true" -->
+        <!--android:layout_marginLeft="10dp"-->
+        <!--android:layout_centerInParent="true"-->
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_below="@+id/surview"
+        android:layout_width="110dp"
+        android:layout_height="40dp"
+        android:layout_alignLeft="@+id/surview"
+        android:textColor="#00FF00"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_below="@+id/surview"
+        android:layout_width="110dp"
+        android:layout_height="40dp"
+        android:layout_alignRight="@+id/surview"
+        android:textColor="#0000FF"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_below="@+id/surview"
+        android:layout_centerHorizontal="true"
+        android:layout_width="80dp"
+        android:layout_height="40dp"
+        android:text="state"
+        android:textColor="#00FFFF"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_width="400dp"
+        android:layout_height="40dp"
+        android:layout_below="@+id/button1"
+        android:layout_centerHorizontal="true"
+        android:textColor="#101010"
+        android:textAllCaps="false"/>
+
+</RelativeLayout>
