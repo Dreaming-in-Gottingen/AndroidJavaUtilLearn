@@ -16,6 +16,9 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+
 public class MainActivity extends Activity {
     private static final String TAG = "ControlTest";
     private int mBtn1ClickCnt = 0;
@@ -57,10 +60,22 @@ public class MainActivity extends Activity {
         img_button.setOnClickListener (new View.OnClickListener() {
             public void onClick(View v) {
                 Log.d(TAG, "img_button click_cnt=" + mImgBtn1ClickCnt++);
-                if (mImgBtn1ClickCnt%2 == 0)
-                    img_button.setImageResource(R.mipmap.lock_on);
-                else
+                if (mImgBtn1ClickCnt%2 == 0) {
+                    Log.d(TAG, "show gray disp for lock_off");
+                    ColorMatrix cm = new ColorMatrix();
+                    cm.setSaturation(0); // 设置饱和度
+                    ColorMatrixColorFilter grayColorFilter = new ColorMatrixColorFilter(cm);
+                    img_button.setColorFilter(grayColorFilter); // 黑白显示
                     img_button.setImageResource(R.mipmap.lock_off);
+                } else {
+                    Log.d(TAG, "show color disp for lock_off");
+                    img_button.setColorFilter(null); // 如果想恢复彩色显示，设置为null即可
+                    img_button.setImageResource(R.mipmap.lock_off);
+                }
+                //if (mImgBtn1ClickCnt%2 == 0)
+                //    img_button.setImageResource(R.mipmap.lock_on);
+                //else
+                //    img_button.setImageResource(R.mipmap.lock_off);
             }
         });
 
