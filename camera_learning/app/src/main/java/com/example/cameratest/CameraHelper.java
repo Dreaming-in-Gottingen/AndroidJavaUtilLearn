@@ -26,6 +26,9 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import android.util.Log;
 
+import java.io.FileOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 
 public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecorder.OnInfoListener*/ {
     private final static String TAG = "CameraHelper";
@@ -34,7 +37,7 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
     //private SurfaceTexture mSurfaceTexture;
     private SurfaceView mSurfaceView;
 
-    //private ImageReader mImageReader;
+    private ImageReader mImageReader;
     private CameraCaptureSession mPreviewSession;
 
     private CameraDevice mCameraDevice;
@@ -44,6 +47,9 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
     private int mPreviewHeight = 720;
 
     private Context mContext;
+
+    private volatile boolean mPhotoFlag = false;
+    private int mPhotoId = 0;
 
     public CameraHelper(Context ctx, SurfaceView sv) {
         Log.d(TAG, "CameraHelper ctor begin!");
@@ -58,6 +64,10 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
         handlerThread.start();
         mCameraHandler = new Handler(handlerThread.getLooper());
         Log.d(TAG, "CameraHelper ctor end!");
+    }
+
+    public void takePhoto() {
+        mPhotoFlag = true;
     }
 
     private SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
@@ -86,8 +96,9 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
             StreamConfigurationMap map = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map!=null;
 
+            mImageReader = ImageReader.newInstance(mPreviewWidth, mPreviewHeight, ImageFormat.YUV_420_888, 1);
             //mImageReader = ImageReader.newInstance(mPreviewWidth, mPreviewHeight, ImageFormat.JPEG, 1);
-            //mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
+            mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
 
             camMgr.openCamera(Integer.toString(CameraCharacteristics.LENS_FACING_FRONT), mCamDevStateCB, mCameraHandler);
         } catch (CameraAccessException e) {
@@ -100,7 +111,30 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
         @Override
         public void onImageAvailable(ImageReader reader) {
             Image img = reader.acquireNextImage();
-            Log.d(TAG, "a image come! h/w:[" + img.getWidth() + "/" + img.getHeight() + "]");
+            if (mPhotoFlag == true) {
+                mPhotoFlag = false;
+
+                ByteBuffer bbY = img.getPlanes()[0].getBuffer();
+                ByteBuffer bbU = img.getPlanes()[1].getBuffer();
+                ByteBuffer bbV = img.getPlanes()[2].getBuffer();
+
+                int picSize = bbY.remaining();
+                byte[] bArrayNV21 = new byte[picSize*3>>1];
+                bbY.get(bArrayNV21, 0, picSize);
+                bbU.get(bArrayNV21, picSize+1, bbU.remaining());
+                bbV.get(bArrayNV21, picSize, 1);
+
+                String picPath = "/mnt/sdcard/photo_id" + mPhotoId + "_" + img.getWidth() + "_" + img.getHeight() + ".yuv";
+                Log.d(TAG, "new photo:" + picPath);
+                mPhotoId++;
+                try {
+                    DataOutputStream yuvFile = new DataOutputStream(new FileOutputStream(picPath));
+                    yuvFile.write(bArrayNV21, 0, bArrayNV21.length);
+                    yuvFile.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
             img.close();
         }
     };
@@ -112,12 +146,12 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
                 Log.i(TAG, "onOpened begin!");
                 mCameraDevice = cd;
                 Surface previewSurface = mSurfaceHolder.getSurface();
-                //Surface imageSurface = mImageReader.getSurface();
+                Surface imageSurface = mImageReader.getSurface();
                 mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 mPreviewBuilder.addTarget(previewSurface);
-                //mPreviewBuilder.addTarget(imageSurface);
-                //mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, imageSurface), mCapStateCB, mCameraHandler);
-                mCameraDevice.createCaptureSession(Arrays.asList(previewSurface), mCapStateCB, mCameraHandler);
+                mPreviewBuilder.addTarget(imageSurface);
+                mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, imageSurface), mCapStateCB, mCameraHandler);
+                //mCameraDevice.createCaptureSession(Arrays.asList(previewSurface), mCapStateCB, mCameraHandler);
                 Log.d(TAG, "camDev=" + cd + ", previewSurface=" + previewSurface);
                 Log.i(TAG, "onOpened end!");
             } catch (CameraAccessException e) {

@@ -56,9 +56,19 @@
 
     <Button
         android:id="@+id/button4"
+        android:layout_below="@+id/button2"
+        android:layout_alignLeft="@+id/button1"
+        android:layout_width="110dp"
+        android:layout_height="40dp"
+        android:text="take photo"
+        android:textColor="#FF00FF"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button6"
         android:layout_width="400dp"
         android:layout_height="40dp"
-        android:layout_below="@+id/button1"
+        android:layout_below="@+id/button4"
         android:layout_centerHorizontal="true"
         android:textColor="#101010"
         android:textAllCaps="false"/>
