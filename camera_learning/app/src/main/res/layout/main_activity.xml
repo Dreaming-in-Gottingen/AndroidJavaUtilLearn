@@ -27,6 +27,25 @@
         <!--android:layout_centerInParent="true"-->
 
     <Button
+        android:id="@+id/button00"
+        android:layout_below="@+id/theme"
+        android:layout_width="120dp"
+        android:layout_height="40dp"
+        android:layout_alignLeft="@+id/surview"
+        android:textColor="#000000"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button01"
+        android:layout_below="@+id/theme"
+        android:layout_width="120dp"
+        android:layout_height="40dp"
+        android:onClick="selectCameraDeviceId"
+        android:layout_alignRight="@+id/surview"
+        android:textColor="#000000"
+        android:textAllCaps="false"/>
+
+    <Button
         android:id="@+id/button1"
         android:layout_below="@+id/surview"
         android:layout_width="110dp"

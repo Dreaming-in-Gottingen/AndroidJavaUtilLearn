@@ -88,11 +88,26 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
         }
     };
 
-    public void openCamera() {
+    public int getCameraDeviceCount() {
+        try {
+            CameraManager camMgr = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
+            String[] camIdList = camMgr.getCameraIdList();
+            Log.d(TAG, "camIdList dump! length=" + camIdList.length);
+            int idx = 0;
+            for (idx=0; idx<camIdList.length; idx++)
+                Log.d(TAG, "    [" + idx + "]:" + camIdList[idx]);
+            return camIdList.length;
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    public void openCamera(int camId) {
         Log.d(TAG, "openCamera begin!");
         CameraManager camMgr = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
         try {
-            CameraCharacteristics cc = camMgr.getCameraCharacteristics(Integer.toString(CameraCharacteristics.LENS_FACING_FRONT));
+            CameraCharacteristics cc = camMgr.getCameraCharacteristics(Integer.toString(camId));
             StreamConfigurationMap map = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map!=null;
 
@@ -100,7 +115,7 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
             //mImageReader = ImageReader.newInstance(mPreviewWidth, mPreviewHeight, ImageFormat.JPEG, 1);
             mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
 
-            camMgr.openCamera(Integer.toString(CameraCharacteristics.LENS_FACING_FRONT), mCamDevStateCB, mCameraHandler);
+            camMgr.openCamera(Integer.toString(camId), mCamDevStateCB, mCameraHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }

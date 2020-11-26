@@ -22,6 +22,9 @@ import android.widget.ImageView;
 import android.os.EnvironmentEx;
 import android.os.Environment;
 
+import android.app.AlertDialog;
+//import android.content.DialogInterface;
+
 
 public class MainActivity extends Activity {
     private static final String TAG = "CameraTest";
@@ -29,14 +32,57 @@ public class MainActivity extends Activity {
     Context mContext;
 
     CameraHelper mCamHelper;
+    int mCamDevCnt = 0;
+    int mCurCamId = 0;
     int mCurCamState = 0; // 1-on; 0-off
     SurfaceView mSurfaceView;
 
+    private Button button00;    //CamDev count
+    private Button button01;    //CamId select
     private Button button1;     //start
     private Button button2;     //stop
     private Button button3;     //current camera state
     private Button button4;     //take photo
     private Button button6;     //quit
+
+    // use which camId for preview
+    public void selectCameraDeviceId(View v) {
+        Log.d(TAG, "select which CamId for preview");
+        if (mCamDevCnt == 0) {
+            if (mCamHelper == null) {
+                mCamHelper = new CameraHelper(mContext, mSurfaceView);
+            }
+            mCamDevCnt = mCamHelper.getCameraDeviceCount();
+            Log.d(TAG, "CamDevCnt=" + mCamDevCnt);
+            button00.setText("CamDevCnt="+mCamDevCnt);
+        }
+
+        String[] items = new String[mCamDevCnt];
+        int idx = 0;
+        for (; idx<mCamDevCnt; idx++) {
+            items[idx] = "camId" + idx;
+        }
+
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        alert.setTitle("select camId");
+        alert.setSingleChoiceItems(items, mCurCamId, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Log.d(TAG, "showSingleAlertDialog : " + i);
+                mCurCamId = i;
+            }
+        });
+        alert.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int i) {
+                Log.d(TAG, "current use CamId=" + mCurCamId);
+                button01.setText("CurCamId=" + mCurCamId);
+            }
+        });
+        AlertDialog dialog = alert.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.show();
+    }
 
     @Override
     public void onCreate(Bundle saveInstanceState) {
@@ -47,6 +93,24 @@ public class MainActivity extends Activity {
         mContext = this;
 
         mSurfaceView = (SurfaceView) findViewById(R.id.surview);
+
+        // get camera device count
+        button00 = (Button) findViewById(R.id.button00);
+        button00.setText("camera cnt...");
+        button00.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCamHelper == null) {
+                    mCamHelper = new CameraHelper(mContext, mSurfaceView);
+                }
+                mCamDevCnt = mCamHelper.getCameraDeviceCount();
+                Log.d(TAG, "CamDevCnt=" + mCamDevCnt);
+                button00.setText("CamDevCnt="+mCamDevCnt);
+            }
+        });
+
+        button01 = (Button) findViewById(R.id.button01);
+        button01.setText("CurCamId...");
 
         // start preview
         button1 = (Button) findViewById(R.id.button1);
@@ -59,7 +123,7 @@ public class MainActivity extends Activity {
                         Log.d(TAG, "CameraHelper ctor! start preview!");
                         mCamHelper = new CameraHelper(mContext, mSurfaceView);
                     }
-                    mCamHelper.openCamera();
+                    mCamHelper.openCamera(mCurCamId);
                     mCurCamState = 1;
                     button3.setText("state:" + mCurCamState);
                 }
