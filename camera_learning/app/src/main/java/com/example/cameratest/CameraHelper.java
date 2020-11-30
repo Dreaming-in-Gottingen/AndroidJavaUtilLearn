@@ -49,7 +49,8 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
     private Context mContext;
 
     private volatile boolean mPhotoFlag = false;
-    private int mPhotoId = 0;
+    private int mCamId = 0;
+    private int mPhotoNum = 0;
 
     public CameraHelper(Context ctx, SurfaceView sv) {
         Log.d(TAG, "CameraHelper ctor begin!");
@@ -116,6 +117,8 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
             mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
 
             camMgr.openCamera(Integer.toString(camId), mCamDevStateCB, mCameraHandler);
+
+            mCamId = camId;
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -139,9 +142,9 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
                 bbU.get(bArrayNV21, picSize+1, bbU.remaining());
                 bbV.get(bArrayNV21, picSize, 1);
 
-                String picPath = "/mnt/sdcard/photo_id" + mPhotoId + "_" + img.getWidth() + "_" + img.getHeight() + ".yuv";
+                String picPath = "/mnt/sdcard/photo_camid" + mCamId + "_num" + mPhotoNum + "_" + img.getWidth() + "_" + img.getHeight() + ".yuv";
                 Log.d(TAG, "new photo:" + picPath);
-                mPhotoId++;
+                mPhotoNum++;
                 try {
                     DataOutputStream yuvFile = new DataOutputStream(new FileOutputStream(picPath));
                     yuvFile.write(bArrayNV21, 0, bArrayNV21.length);
