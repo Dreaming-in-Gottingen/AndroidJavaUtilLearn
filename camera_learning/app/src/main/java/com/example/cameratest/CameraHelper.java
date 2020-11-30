@@ -17,6 +17,7 @@ import android.app.Activity;
 
 import android.media.Image;
 import android.media.ImageReader;
+import android.media.MediaRecorder;
 import android.graphics.ImageFormat;
 import android.view.Surface;
 import android.view.SurfaceHolder;
@@ -28,9 +29,10 @@ import android.util.Log;
 
 import java.io.FileOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecorder.OnInfoListener*/ {
+public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorder.OnInfoListener {
     private final static String TAG = "CameraHelper";
 
     private SurfaceHolder mSurfaceHolder;
@@ -51,6 +53,9 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
     private volatile boolean mPhotoFlag = false;
     private int mCamId = 0;
     private int mPhotoNum = 0;
+
+    private int mVideoNum = 0;
+    private MediaRecorder mRecorder;
 
     public CameraHelper(Context ctx, SurfaceView sv) {
         Log.d(TAG, "CameraHelper ctor begin!");
@@ -142,11 +147,11 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
                 bbU.get(bArrayNV21, picSize+1, bbU.remaining());
                 bbV.get(bArrayNV21, picSize, 1);
 
-                String picPath = "/mnt/sdcard/photo_camid" + mCamId + "_num" + mPhotoNum + "_" + img.getWidth() + "_" + img.getHeight() + ".yuv";
-                Log.d(TAG, "new photo:" + picPath);
+                String photoPath = "/mnt/sdcard/photo_camid" + mCamId + "_num" + mPhotoNum + "_" + img.getWidth() + "_" + img.getHeight() + ".yuv";
+                Log.d(TAG, "new photoPath=" + photoPath);
                 mPhotoNum++;
                 try {
-                    DataOutputStream yuvFile = new DataOutputStream(new FileOutputStream(picPath));
+                    DataOutputStream yuvFile = new DataOutputStream(new FileOutputStream(photoPath));
                     yuvFile.write(bArrayNV21, 0, bArrayNV21.length);
                     yuvFile.close();
                 } catch (Exception e) {
@@ -212,6 +217,121 @@ public class CameraHelper /*implements MediaRecorder.OnErrorListener, MediaRecor
             mCameraDevice = null;
         }
     };
+
+    @Override
+    public void onInfo(MediaRecorder recorder, int what, int extra) {
+        Log.w(TAG, "MediaRecorder onInfo! what=" + what + ", extra=" + extra);
+    }
+
+    public void onError(MediaRecorder recorder, int what, int extra) {
+        Log.e(TAG, "MediaRecorder onError! what=" + what + ", extra=" + extra);
+    }
+
+    public void configureRecParam() {
+        mRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        mRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+
+        mRecorder.setVideoEncodingBitRate(6*1000*1000);
+        mRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mRecorder.setVideoFrameRate(30);
+        mRecorder.setVideoSize(mPreviewWidth, mPreviewHeight);
+
+        String videoPath = "/mnt/sdcard/video_camid" + mCamId + "_num" + mVideoNum + ".mp4";
+        Log.d(TAG, "new videoPath=" + videoPath);
+        mVideoNum++;
+
+        mRecorder.setOutputFile(videoPath);
+        mRecorder.setOnErrorListener(this);
+        mRecorder.setOnInfoListener(this);
+        try {
+            mRecorder.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void startRecorder() {
+        Log.d(TAG, "startRecorder begin");
+
+        mRecorder = new MediaRecorder();
+        closePreviewSession();
+        configureRecParam();
+
+        try {
+            mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+        Surface recordSurface = mRecorder.getSurface();
+        Surface previewSurface = mSurfaceHolder.getSurface();
+        Surface imageSurface = mImageReader.getSurface();
+        mPreviewBuilder.addTarget(recordSurface);
+        mPreviewBuilder.addTarget(previewSurface);
+        mPreviewBuilder.addTarget(imageSurface);
+
+        try {
+            mCameraDevice.createCaptureSession(Arrays.asList(recordSurface, imageSurface, previewSurface), new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(CameraCaptureSession session) {
+                    Log.i(TAG, "onConfigured begin!");
+                    mPreviewSession = session;
+                    try {
+                        mPreviewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                        mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, mCameraHandler);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                    Log.i(TAG, "onConfigured end!");
+                }
+                @Override
+                public void onConfigureFailed(CameraCaptureSession session) {
+                }
+            }, mCameraHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        mRecorder.start();
+
+        Log.d(TAG, "startRecorder end");
+    }
+
+    public void stopRecorder() {
+        if (mRecorder != null) {
+            Log.i(TAG, "stopRecorder begin");
+            mRecorder.stop();
+            mRecorder.reset();
+            mRecorder = null;
+            Log.i(TAG, "stopRecorder end");
+        }
+
+        try {
+            Surface previewSurface = mSurfaceHolder.getSurface();
+            Surface imageSurface = mImageReader.getSurface();
+            mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            mPreviewBuilder.addTarget(previewSurface);
+            mPreviewBuilder.addTarget(imageSurface);
+            mCameraDevice.createCaptureSession(Arrays.asList(imageSurface, previewSurface), new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(CameraCaptureSession session) {
+                    Log.i(TAG, "onConfigured begin!");
+                    mPreviewSession = session;
+                    try {
+                        mPreviewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                        mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, mCameraHandler);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                    Log.i(TAG, "onConfigured end!");
+                }
+                @Override
+                public void onConfigureFailed(CameraCaptureSession session) {
+                }
+            }, mCameraHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
 
     public void closePreviewSession() {
         if (mPreviewSession != null) {

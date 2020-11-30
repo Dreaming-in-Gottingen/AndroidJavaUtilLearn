@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     int mCamDevCnt = 0;
     int mCurCamId = 0;
     int mCurCamState = 0; // 1-on; 0-off
+    int mCurRecState = 0; // 1-on; 0-off
     SurfaceView mSurfaceView;
 
     private Button button00;    //CamDev count
@@ -43,6 +44,7 @@ public class MainActivity extends Activity {
     private Button button2;     //stop
     private Button button3;     //current camera state
     private Button button4;     //take photo
+    private Button button5;     //start/stop record
     private Button button6;     //quit
 
     // use which camId for preview
@@ -163,6 +165,27 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 if (mCamHelper != null)
                     mCamHelper.takePhoto();
+            }
+        });
+
+        // start/stop record
+        button5 = (Button) findViewById(R.id.button5);
+        button5.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCurCamState == 1) {
+                    if (mCurRecState==0 && mCamHelper!=null) {
+                        mCamHelper.startRecorder();
+                        mCurRecState = 1;
+                        button5.setText("stop record");
+                    } else if (mCurRecState==1 && mCamHelper!=null) {
+                        mCamHelper.stopRecorder();
+                        mCurRecState = 0;
+                        button5.setText("start record");
+                    }
+                } else {
+                    Log.e(TAG, "can not control recorder when CameraDevice is not working!!!");
+                }
             }
         });
 
