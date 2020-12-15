@@ -32,6 +32,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import android.util.Size;
+import android.util.Range;
+
+
 public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorder.OnInfoListener {
     private final static String TAG = "CameraHelper";
 
@@ -116,6 +120,16 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
             CameraCharacteristics cc = camMgr.getCameraCharacteristics(Integer.toString(camId));
             StreamConfigurationMap map = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map!=null;
+            Log.d(TAG, "list CamDev[" + camId + "] info...");
+            Size[] sizeMap = map.getOutputSizes(SurfaceHolder.class);
+            for (int i = 0; i < sizeMap.length; i++) {
+                Size itemSize = sizeMap[i];
+                Log.d(TAG, "    item[" + i + "] width/height=" + itemSize.getWidth() + "," + itemSize.getHeight());
+            }
+
+            Range<Integer>[] fpsRanges;
+            fpsRanges = cc.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+            Log.d(TAG, "fps_range: " + Arrays.toString(fpsRanges));
 
             mImageReader = ImageReader.newInstance(mPreviewWidth, mPreviewHeight, ImageFormat.YUV_420_888, 1);
             //mImageReader = ImageReader.newInstance(mPreviewWidth, mPreviewHeight, ImageFormat.JPEG, 1);
