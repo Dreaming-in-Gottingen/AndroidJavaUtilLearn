@@ -19,7 +19,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="60dp"
         android:layout_width="300dp"
-        android:layout_height="480dp" />
+        android:layout_height="240dp" />
         <!--android:layout_width="match_parent" -->
         <!--android:layout_height="480dp" -->
         <!--android:layout_centerHorizontal="true" -->
@@ -101,5 +101,12 @@
         android:layout_centerHorizontal="true"
         android:textColor="#101010"
         android:textAllCaps="false"/>
+
+    <SurfaceView
+        android:id="@+id/surview2"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/button6"
+        android:layout_width="300dp"
+        android:layout_height="240dp" />
 
 </RelativeLayout>

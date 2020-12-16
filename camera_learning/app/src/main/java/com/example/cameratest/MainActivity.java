@@ -29,14 +29,18 @@ import android.app.AlertDialog;
 public class MainActivity extends Activity {
     private static final String TAG = "CameraTest";
 
+    final boolean mUseSurfaceView2 = false;
+
     Context mContext;
 
     CameraHelper mCamHelper;
+    CameraHelper mCamHelper2;
     int mCamDevCnt = 0;
     int mCurCamId = 0;
     int mCurCamState = 0; // 1-on; 0-off
     int mCurRecState = 0; // 1-on; 0-off
     SurfaceView mSurfaceView;
+    SurfaceView mSurfaceView2;
 
     private Button button00;    //CamDev count
     private Button button01;    //CamId select
@@ -95,6 +99,9 @@ public class MainActivity extends Activity {
         mContext = this;
 
         mSurfaceView = (SurfaceView) findViewById(R.id.surview);
+        if (mUseSurfaceView2 == true) {
+            mSurfaceView2 = (SurfaceView) findViewById(R.id.surview2);
+        }
 
         // get camera device count
         button00 = (Button) findViewById(R.id.button00);
@@ -126,6 +133,14 @@ public class MainActivity extends Activity {
                         mCamHelper = new CameraHelper(mContext, mSurfaceView);
                     }
                     mCamHelper.openCamera(mCurCamId);
+                    if (mUseSurfaceView2 == true) {
+                        if (mCamHelper2 == null) {
+                            Log.d(TAG, "CameraHelper ctor! start preview!");
+                            mCamHelper2 = new CameraHelper(mContext, mSurfaceView2);
+                        }
+                        mCamHelper2.openCamera((mCurCamId+1<mCamDevCnt) ? (mCurCamId+1) : 0);
+                    }
+
                     mCurCamState = 1;
                     button3.setText("state:" + mCurCamState);
                 }
@@ -141,6 +156,9 @@ public class MainActivity extends Activity {
                 if (mCurCamState == 1) {
                     Log.d(TAG, "stop camera device!");
                     mCamHelper.closeCameraDevice();
+                    if (mUseSurfaceView2 == true) {
+                        mCamHelper2.closeCameraDevice();
+                    }
                     mCurCamState = 0;
                     button3.setText("state:" + mCurCamState);
                 }
@@ -163,8 +181,12 @@ public class MainActivity extends Activity {
         button4.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mCamHelper != null)
+                if (mCamHelper != null) {
                     mCamHelper.takePhoto();
+                    if (mUseSurfaceView2 == true) {
+                        mCamHelper2.takePhoto();
+                    }
+                }
             }
         });
 
@@ -199,6 +221,9 @@ public class MainActivity extends Activity {
                 if (mCurCamState == 1) {
                     Log.d(TAG, "stop camera device!");
                     mCamHelper.closeCameraDevice();
+                    if (mUseSurfaceView2 == true) {
+                        mCamHelper2.closeCameraDevice();
+                    }
                     mCurCamState = 0;
                 }
                 finish();

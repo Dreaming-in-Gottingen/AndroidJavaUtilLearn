@@ -31,6 +31,7 @@ import java.io.FileOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.io.RandomAccessFile;
 
 import android.util.Size;
 import android.util.Range;
@@ -235,6 +236,27 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
     @Override
     public void onInfo(MediaRecorder recorder, int what, int extra) {
         Log.w(TAG, "MediaRecorder onInfo! what=" + what + ", extra=" + extra);
+        switch(what) {
+            case MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED: {
+                String videoPath = "/mnt/sdcard/video_camid" + mCamId + "_num" + mVideoNum + ".mp4";
+                mVideoNum++;
+                Log.d(TAG, "new videoPath=" + videoPath);
+                RandomAccessFile file;
+                try {
+                    file = new RandomAccessFile(videoPath, "rw");
+                    mRecorder.setNextOutputFile(file.getFD());
+                    if (file != null) {
+                        file.close();
+                    }
+                } catch (IOException ioe) {
+                    Log.e(TAG, "couldn't set next file:", ioe);
+                }
+                break;
+            }
+            default: {
+                break;
+            }
+        }
     }
 
     public void onError(MediaRecorder recorder, int what, int extra) {
@@ -249,6 +271,8 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
         mRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mRecorder.setVideoFrameRate(30);
         mRecorder.setVideoSize(mPreviewWidth, mPreviewHeight);
+
+        //mRecorder.setMaxDuration(30*1000); // for loop rec
 
         String videoPath = "/mnt/sdcard/video_camid" + mCamId + "_num" + mVideoNum + ".mp4";
         Log.d(TAG, "new videoPath=" + videoPath);
@@ -348,17 +372,21 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
     }
 
     public void closePreviewSession() {
+        Log.d(TAG, "closePreviewSession begin");
         if (mPreviewSession != null) {
             mPreviewSession.close();
             mPreviewSession = null;
         }
+        Log.d(TAG, "closePreviewSession end");
     }
 
     public void closeCameraDevice() {
+        Log.d(TAG, "closeCameraDevice begin");
         if (mCameraDevice != null) {
             mCameraDevice.close();
             mCameraDevice = null;
         }
+        Log.d(TAG, "closeCameraDevice end");
     }
 
     public void stopCameraAndPreview() {
