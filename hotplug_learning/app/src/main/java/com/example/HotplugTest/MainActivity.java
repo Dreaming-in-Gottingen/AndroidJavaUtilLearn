@@ -30,9 +30,16 @@ public class MainActivity extends Activity {
     private Button button0;
     private Button button1;
 
-    private IntentFilter mMountFilter;
-    private BroadcastReceiver mReceiver;
+    // 0-MOUNTED/UNMOUNTED
+    // 1-EJECT_DERIVED
+    // 2-EJECT_BASE
+    private final int mUseType = 1;
 
+    private BroadcastReceiver mMountReceiver;
+    //private EjectReceiver mEjectReceiver;
+    private BroadcastReceiver mEjectReceiver;
+
+    IntentFilter filter;
     private AlertDialog.Builder mBuilder;
 
     @Override
@@ -41,17 +48,31 @@ public class MainActivity extends Activity {
         super.onCreate(saveInstanceState);
         setContentView(R.layout.main_activity);
 
-        mMountFilter = new IntentFilter(Intent.ACTION_MEDIA_MOUNTED);   //监听卡插入事件
-        mMountFilter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);          //监听卡拔出事件
-        mMountFilter.addDataScheme("file");
-
-        mReceiver = new BroadcastReceiver() {
-            public void onReceive(Context ctx, Intent intent) {
-                broadcastReceiverHandler(intent);
-            }
-        };
-
-        registerReceiver(mReceiver, mMountFilter);
+        Log.d(TAG, "mUseType=" + mUseType);
+        IntentFilter filter = new IntentFilter();
+        filter.addDataScheme("file");
+        if (mUseType == 0) {
+            filter.addAction(Intent.ACTION_MEDIA_MOUNTED);          //监听卡mount事件
+            filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);        //监听卡unmount事件
+            mMountReceiver = new BroadcastReceiver() {
+                public void onReceive(Context ctx, Intent intent) {
+                    broadcastReceiverHandler(intent);
+                }
+            };
+            registerReceiver(mMountReceiver, filter);
+        } else if (mUseType == 1) {
+            filter.addAction(Intent.ACTION_MEDIA_EJECT);
+            mEjectReceiver = new EjectReceiver();
+            registerReceiver(mEjectReceiver, filter);
+        } else {
+            filter.addAction(Intent.ACTION_MEDIA_EJECT);
+            mEjectReceiver = new BroadcastReceiver() {
+                public void onReceive(Context ctx, Intent intent) {
+                    broadcastReceiverHandler(intent);
+                }
+            };
+            registerReceiver(mEjectReceiver, filter);
+        }
 
         mBuilder = new AlertDialog.Builder(this);
         mBuilder.setTitle("Warnning!");
@@ -84,17 +105,41 @@ public class MainActivity extends Activity {
             mBuilder.setMessage("TF card mounted!");
         } else if (Intent.ACTION_MEDIA_UNMOUNTED.equals(action)) {
             mBuilder.setMessage("TF card unmounted!");
+        } else if (Intent.ACTION_MEDIA_EJECT.equals(action)) {
+            mBuilder.setMessage("TF card eject!");
         } else {
             mBuilder.setMessage("what happend?!!!");
         }
         mBuilder.create().show();
     }
 
+    class EjectReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context ctx, Intent intent) {
+            Log.w(TAG, "EjectReceiver onReceive:" + intent);
+            String action = intent.getAction();
+            if (Intent.ACTION_MEDIA_EJECT.equals(action)) {
+                mBuilder.setMessage("TF card eject!");
+            } else {
+                mBuilder.setMessage("what happend?!!!");
+            }
+            mBuilder.create().show();
+        }
+    };
+
     protected void onDestroy() {
         Log.w(TAG, "onDestroy!");
-        if (mReceiver != null) {
-            unregisterReceiver(mReceiver);
-            mReceiver = null;
+
+        if (mUseType == 0) {
+            if (mMountReceiver != null) {
+                unregisterReceiver(mMountReceiver);
+                mMountReceiver = null;
+            }
+        } else {
+            if (mEjectReceiver != null) {
+                  unregisterReceiver(mEjectReceiver);
+                  mEjectReceiver = null;
+            }
         }
         super.onDestroy();
     }
