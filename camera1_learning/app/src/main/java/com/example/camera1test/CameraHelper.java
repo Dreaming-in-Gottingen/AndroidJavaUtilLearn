@@ -127,13 +127,23 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PictureCallb
     private void configureRecorder() {
         mRecorder = new MediaRecorder();
 
+        // Step 1: Unlock and set camera to MediaRecorder
+        mCamera.unlock();
         mRecorder.setCamera(mCamera);
+
+        // Step 2: Set sources
         mRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+
+        // Step 3: Set output file format
         mRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+
+        // Step 4: Set enc parameters
         mRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mRecorder.setVideoSize(mVideoWidth, mVideoHeight);
         mRecorder.setVideoEncodingBitRate(6*1024*1024);
         mRecorder.setVideoFrameRate(30);
+
+        // Step 5: Set rotation degree in mp4 file
         mRecorder.setOrientationHint(90);
 
         //String storage_dir = Environment.getExternalStorageDirectory().getPath();
@@ -141,7 +151,10 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PictureCallb
         String video_path = mCamera1TestDir + "/video_camid" + mCamId + "_num" + mVideoNum + ".mp4";
         Log.d(TAG, "video_path=" + video_path);
         mVideoNum++;
+        // Step 6: Set output file path
         mRecorder.setOutputFile(video_path);
+
+        // Step 7: Register error listener
         mRecorder.setOnErrorListener(new MediaRecorder.OnErrorListener() {
             @Override
             public void onError(MediaRecorder mr, int what, int extra) {
@@ -156,13 +169,16 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PictureCallb
             return;
 
         Log.d(TAG, "startRecorder");
-        mCamera.unlock();
         configureRecorder();
+
+        // Step 8: Prepare configured MediaRecorder
         try {
             mRecorder.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        // Step 9: Start recorder
         mRecorder.start();
         mRecorderState = true;
     }
