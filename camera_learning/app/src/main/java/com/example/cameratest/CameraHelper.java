@@ -7,6 +7,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 
 import android.os.Handler;
@@ -79,6 +80,26 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
 
     public void takePhoto() {
         mPhotoFlag = true;
+
+        // test single request for photo, optimize performance
+        try {
+            CaptureRequest.Builder singleRequest = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            singleRequest.addTarget(mImageReader.getSurface());
+            singleRequest.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            singleRequest.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            singleRequest.set(CaptureRequest.JPEG_ORIENTATION, 90);
+
+            mPreviewSession.capture(singleRequest.build(),
+                            new CameraCaptureSession.CaptureCallback() {
+                                @Override
+                                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                                    Log.d(TAG, "onCaptureCompleted!");
+                                }
+                            },
+                            mCameraHandler);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     private SurfaceHolder.Callback mSurfaceHolderCallback = new SurfaceHolder.Callback() {
@@ -148,6 +169,7 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
     private ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
+            Log.d(TAG, "onImageAvailable...");
             Image img = reader.acquireNextImage();
             if (mPhotoFlag == true) {
                 mPhotoFlag = false;
@@ -187,7 +209,7 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
                 Surface imageSurface = mImageReader.getSurface();
                 mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 mPreviewBuilder.addTarget(previewSurface);
-                mPreviewBuilder.addTarget(imageSurface);
+                //mPreviewBuilder.addTarget(imageSurface);
                 mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, imageSurface), mCapStateCB, mCameraHandler);
                 //mCameraDevice.createCaptureSession(Arrays.asList(previewSurface), mCapStateCB, mCameraHandler);
                 Log.d(TAG, "camDev=" + cd + ", previewSurface=" + previewSurface);
@@ -306,7 +328,7 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
         Surface imageSurface = mImageReader.getSurface();
         mPreviewBuilder.addTarget(recordSurface);
         mPreviewBuilder.addTarget(previewSurface);
-        mPreviewBuilder.addTarget(imageSurface);
+        //mPreviewBuilder.addTarget(imageSurface);
 
         try {
             mCameraDevice.createCaptureSession(Arrays.asList(recordSurface, imageSurface, previewSurface), new CameraCaptureSession.StateCallback() {
@@ -348,7 +370,7 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
             Surface imageSurface = mImageReader.getSurface();
             mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mPreviewBuilder.addTarget(previewSurface);
-            mPreviewBuilder.addTarget(imageSurface);
+            //mPreviewBuilder.addTarget(imageSurface);
             mCameraDevice.createCaptureSession(Arrays.asList(imageSurface, previewSurface), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(CameraCaptureSession session) {

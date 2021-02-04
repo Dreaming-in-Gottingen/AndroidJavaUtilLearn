@@ -19,7 +19,7 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
-import android.os.EnvironmentEx;
+//import android.os.EnvironmentEx;
 import android.os.Environment;
 
 import android.app.AlertDialog;
@@ -170,9 +170,9 @@ public class MainActivity extends Activity {
         button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String state = EnvironmentEx.getExternalStoragePathState();
-                boolean mount = Environment.MEDIA_MOUNTED.equals(state);
-                Log.d(TAG, "state=" + state + ", mount=" + mount);
+                //String state = EnvironmentEx.getExternalStoragePathState();
+                //boolean mount = Environment.MEDIA_MOUNTED.equals(state);
+                //Log.d(TAG, "state=" + state + ", mount=" + mount);
             }
         });
 
