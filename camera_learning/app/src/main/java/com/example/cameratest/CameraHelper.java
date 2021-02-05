@@ -89,11 +89,17 @@ public class CameraHelper implements MediaRecorder.OnErrorListener, MediaRecorde
             singleRequest.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
             singleRequest.set(CaptureRequest.JPEG_ORIENTATION, 90);
 
+            mPreviewSession.stopRepeating();
             mPreviewSession.capture(singleRequest.build(),
                             new CameraCaptureSession.CaptureCallback() {
                                 @Override
                                 public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-                                    Log.d(TAG, "onCaptureCompleted!");
+                                    Log.d(TAG, "onCaptureCompleted! restart preview!");
+                                    try {
+                                        mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, mCameraHandler);
+                                    } catch (CameraAccessException e) {
+                                        e.printStackTrace();
+                                    }
                                 }
                             },
                             mCameraHandler);
