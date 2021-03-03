@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    tools:context="com.example.service_client.MainActivity">
+
+    <Button
+        android:id="@+id/bind_service"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="bind service"
+        android:textAllCaps="false"
+	android:textColor="#000000"/>
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/bind_service"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="setter"
+        android:textColor="#FF0000"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="getter"
+        android:textColor="#0000FF"
+        android:textAllCaps="false"/>
+
+</RelativeLayout>
