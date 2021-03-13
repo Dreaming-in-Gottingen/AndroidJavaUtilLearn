@@ -1,0 +1,515 @@
+package com.example.Extractor2CodecDemo;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
+
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
+import android.os.HandlerThread;
+import android.os.Handler;
+import android.os.Message;
+
+import android.media.MediaFormat;
+import android.media.MediaExtractor;
+import android.media.MediaCodec;
+
+import android.os.Environment;
+import android.os.Build;
+
+import android.database.Cursor;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
+import android.content.ContentUris;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.FileNotFoundException;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+
+import java.nio.ByteBuffer;
+
+import android.net.Uri;
+
+public class MainActivity extends Activity {
+    private static final String TAG = "Extractor2CodecDemo";
+    private Button mButton0; // reset button, select which video-file to extract
+    private Button mButton1; // extract video track
+    private Button mButton2; // extract audio track
+    private Button mButton3; // exit
+
+    final private int MAX_BS_LEN = 1024*1024;
+
+    private final String kMimeTypeAvc = "video/avc";
+    private final String kMimeTypeAac = "audio/mp4a-latm";
+
+    private int mTrackType; // 0-video; 1-audio
+    volatile private int mTrackCnt;  // 1 -- file without audio
+
+    //private MediaFormat mVideoFormat;
+    //private MediaFormat mAudioFormat;
+    private MediaFormat mMediaFormat;
+
+    //private MediaCodec mVideoCodec;
+    //private MediaCodec mAudioCodec;
+    private MediaCodec mMediaCodec;
+
+    private MediaCodec.BufferInfo mBufferInfo;
+    private ByteBuffer[] mInputBuffers;
+    private ByteBuffer[] mOutputBuffers;
+
+    private String mVideoPath;
+    //private String mDstYUVPath;
+    //private String mDstPCMPath;
+    private String mDstPath;
+
+    //private OutputStream mAvcStream;
+    //private OutputStream mAacStream;
+    //private OutputStream mYUVStream;
+    //private OutputStream mPCMStream;
+    private OutputStream mOutputStream;
+
+    private int mExtractFrameCnt = 0; // from extractor
+    private int mDecFrmCnt = 0;       // from codec
+
+    private MediaExtractor mMediaExtractor;
+
+    // feed bitstream to MC's inport-buffer in this loop
+    private HandlerThread mCodecThread; // dequeue/queue MC input-buffer.
+    private Handler mCodecHandler;
+
+    private HandlerThread mMuxerThread; // queue/release MC output-buffer, and muxer(keep yuv/pcm to local file).
+    private Handler mMuxerHandler;
+
+    private Handler mMainHandler;   // main handler update decoded frame count
+
+    private final int MSG_CODEC_START = 0;
+    private final int MSG_CODEC_STOP = 1;
+    private final int MSG_CODEC_DEQUEUE_IN_BUF = 2;
+    private final int MSG_CODEC_DEQUEUE_OUT_BUF = 3;
+
+    private final int MSG_MUXER_START = 0;
+    private final int MSG_MUXER_STOP = 1;
+
+///////////////////////////////////////////////////////////////////////////////////
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode == Activity.RESULT_OK) {
+            Log.d(TAG, "result data: " + data);
+            Uri uri = data.getData();
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
+                String path = uri.getPath();
+            }
+            Log.d(TAG, "Scheme:" + uri.getScheme());
+            Log.d(TAG, "Path:" + uri.getPath());
+            Log.d(TAG, "Authority:" + uri.getAuthority());
+
+            String path;
+            //get real absolute path
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
+                mVideoPath = getPath(this, uri);
+            } else {//4.4以下下系统调用方法
+                mVideoPath = getRealPathFromURI(uri);
+            }
+            Log.d(TAG, "after parse uri, video absolute path=" + mVideoPath);
+
+            if (mMediaExtractor != null) {
+                mMediaExtractor.release();
+                mMediaExtractor = null;
+            }
+            mMediaExtractor = new MediaExtractor();
+            try {
+                mMediaExtractor.setDataSource(mVideoPath);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            int mTrackCnt = mMediaExtractor.getTrackCount();
+            Log.d(TAG, "track_cnt=" + mTrackCnt);
+
+            for (int i=0; i<mTrackCnt; i++) {
+                MediaFormat media_format = mMediaExtractor.getTrackFormat(i);
+                // careful: i may be not equal to track-id, which is contained in MediaFormat
+                String mime = media_format.getString(MediaFormat.KEY_MIME);
+                Log.d(TAG, "track_idx=" + i + ", mime=" + mime);
+                Log.d(TAG, "          " + media_format);
+            }
+        }
+    }
+
+    public String getRealPathFromURI(Uri contentUri) {
+        String res = null;
+        String[] proj = { MediaStore.Images.Media.DATA };
+        Cursor cursor = getContentResolver().query(contentUri, proj, null, null, null);
+        if(null!=cursor&&cursor.moveToFirst()){;
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            res = cursor.getString(column_index);
+            cursor.close();
+        }
+        return res;
+    }
+
+    public String getPath(final Context context, final Uri uri) {
+        final boolean isKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
+
+        // DocumentProvider
+        if (isKitKat && DocumentsContract.isDocumentUri(context, uri)) {
+            // ExternalStorageProvider
+            if (isExternalStorageDocument(uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                if ("primary".equalsIgnoreCase(type)) {
+                    return Environment.getExternalStorageDirectory() + "/" + split[1];
+                }
+            }
+            // DownloadsProvider
+            else if (isDownloadsDocument(uri)) {
+                final String id = DocumentsContract.getDocumentId(uri);
+                final Uri contentUri = ContentUris.withAppendedId(
+                        Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+
+                return getDataColumn(context, contentUri, null, null);
+            }
+            // MediaProvider
+            else if (isMediaDocument(uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                Uri contentUri = null;
+                if ("image".equals(type)) {
+                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                } else if ("video".equals(type)) {
+                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                } else if ("audio".equals(type)) {
+                    contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                }
+
+                final String selection = "_id=?";
+                final String[] selectionArgs = new String[]{split[1]};
+
+                return getDataColumn(context, contentUri, selection, selectionArgs);
+            }
+        }
+        // MediaStore (and general)
+        else if ("content".equalsIgnoreCase(uri.getScheme())) {
+            return getDataColumn(context, uri, null, null);
+        }
+        // File
+        else if ("file".equalsIgnoreCase(uri.getScheme())) {
+            return uri.getPath();
+        }
+        return null;
+    }
+
+     /**
+      * Get the value of the data column for this Uri. This is useful for
+      * MediaStore Uris, and other file-based ContentProviders.
+      *
+      * @param context       The context.
+      * @param uri           The Uri to query.
+      * @param selection     (Optional) Filter used in the query.
+      * @param selectionArgs (Optional) Selection arguments used in the query.
+      * @return The value of the _data column, which is typically a file path.
+      */
+    public String getDataColumn(Context context, Uri uri, String selection, String[] selectionArgs) {
+        Cursor cursor = null;
+        final String column = "_data";
+        final String[] projection = {column};
+
+        try {
+            cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs,
+                    null);
+            if (cursor != null && cursor.moveToFirst()) {
+                final int column_index = cursor.getColumnIndexOrThrow(column);
+                return cursor.getString(column_index);
+            }
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
+        return null;
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is ExternalStorageProvider.
+     */
+    public boolean isExternalStorageDocument(Uri uri) {
+        return "com.android.externalstorage.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is DownloadsProvider.
+     */
+    public boolean isDownloadsDocument(Uri uri) {
+        return "com.android.providers.downloads.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is MediaProvider.
+     */
+    public boolean isMediaDocument(Uri uri) {
+        return "com.android.providers.media.documents".equals(uri.getAuthority());
+    }
+///////////////////////////////////////////////////////////////////////////////////
+
+    private void prepare(int type) {
+        // prepare Codec handler
+        mCodecThread = new HandlerThread("CodecThread");
+        mCodecThread.start();
+        mCodecHandler = new Handler(mCodecThread.getLooper()) {
+            public void handleMessage(Message msg) {
+                // workflow: dequeue buf -> extract into buf -> queue buf
+                switch(msg.what) {
+                    case MSG_CODEC_START:
+                        Log.d(TAG, "MSG_CODEC_START");
+                        mMediaCodec.start();
+                        mInputBuffers = mMediaCodec.getInputBuffers();
+                        mOutputBuffers = mMediaCodec.getOutputBuffers();
+                        Log.d(TAG, "mInputBuffers.len=" + mInputBuffers.length + ", mOutputBuffers.len=" + mOutputBuffers.length);
+                        mBufferInfo = new MediaCodec.BufferInfo();
+                        mCodecHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_IN_BUF);
+                        break;
+                    case MSG_CODEC_STOP:
+                        Log.d(TAG, "MSG_CODEC_STOT");
+                        mMediaCodec.stop();
+                        mMediaCodec.release();
+                        mMediaCodec = null;
+                        break;
+                    case MSG_CODEC_DEQUEUE_IN_BUF:
+                        int idx = mMediaCodec.dequeueInputBuffer(-1);
+                        if (idx < 0) {
+                            mCodecHandler.sendEmptyMessageDelayed(MSG_CODEC_DEQUEUE_IN_BUF, 30); // 30ms
+                            return;
+                        }
+                        ByteBuffer buf = mInputBuffers[idx];
+                        buf.clear();
+
+                        if (mMediaExtractor.readSampleData(buf, 0) != -1) {
+                            int track_id = mMediaExtractor.getSampleTrackIndex();
+                            long pts = mMediaExtractor.getSampleTime();
+                            int size = (int)mMediaExtractor.getSampleSize();
+                            Log.d(TAG, "[input-buffer] buf_idx=" + idx + ", mExtractFrameCnt=" + mExtractFrameCnt++ + ", pts=" + pts/1000 + ", size=" + size);
+
+                            boolean eos = mMediaExtractor.advance();
+                            if (eos == false) {
+                                Log.w(TAG, "warning: end of stream found from file!");
+                                mMediaCodec.queueInputBuffer(idx, 0, size, pts, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                                //mCodecHandler.sendEmptyMessage(MSG_CODEC_STOP); // move to MuxerThread to send this message!
+                                break;
+                            }
+                            mMediaCodec.queueInputBuffer(idx, 0, size, pts, 0);
+                            mCodecHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_IN_BUF);
+                        } else {
+                            Log.w(TAG, "unknown error!");
+                            mCodecHandler.sendEmptyMessage(MSG_CODEC_STOP);
+                        }
+                        break;
+                        //mButton1.setText("dec_frm_cnt:" + frm_idx);
+                }
+            }
+        };
+
+        // prepare Muxer handler
+        mMuxerThread = new HandlerThread("MuxerThread");
+        mMuxerThread.start();
+        mMuxerHandler = new Handler(mMuxerThread.getLooper()) {
+            public void handleMessage(Message msg) {
+                switch(msg.what) {
+                    case MSG_MUXER_START:
+                        Log.w(TAG, "MSG_MUXER_START");
+                        mMuxerHandler.sendEmptyMessageDelayed(MSG_CODEC_DEQUEUE_OUT_BUF, 30);
+                        break;
+                    case MSG_MUXER_STOP:
+                        Log.w(TAG, "MSG_MUXER_STOP");
+
+                        //mMediaExtractor.stop(); // no this api
+                        mMediaExtractor.release();
+                        mMediaExtractor = null;
+
+                        mMainHandler.post(new Runnable() {
+                            @Override
+                            public void run () {
+                                // reset everything
+                                try {
+                                    mOutputStream.close();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                mButton1.setText("extract video");
+                                mButton2.setText("extract audio");
+                                mMuxerThread.quit();
+                                mCodecThread.quit();
+                            }
+                        });
+                        break;
+                    case MSG_CODEC_DEQUEUE_OUT_BUF:
+                        int idx = mMediaCodec.dequeueOutputBuffer(mBufferInfo, -1);
+                        if (idx >= 0) {
+                            if (mBufferInfo.flags == MediaCodec.BUFFER_FLAG_END_OF_STREAM) {
+                                Log.w(TAG, "find EOS in output-buffer! need quit!");
+                                mMediaCodec.releaseOutputBuffer(idx, false);
+                                mMuxerHandler.sendEmptyMessage(MSG_MUXER_STOP);
+                                mCodecHandler.sendEmptyMessage(MSG_CODEC_STOP);
+                                break;
+                            }
+                            int out_sz = mBufferInfo.size;
+                            byte[] out_data = new byte[out_sz];
+                            // for avc include many B frames, may MediaCodec INFO_OUTPUT_BUFFERS_CHANGED
+                            // casue error: java.lang.IllegalStateException: buffer is inaccessible
+                            // BUG2
+                            mOutputBuffers[idx].get(out_data);
+                            try {
+                                // for yuv data output, it is nv12 format on sprd platform, where convert?
+                                mOutputStream.write(out_data, 0, out_sz);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            if (mTrackType == 0) {
+                                mMainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run () {
+                                        mButton1.setText("video_dec_frm_cnt=" + mDecFrmCnt++);
+                                    }
+                                });
+                            } else {
+                                mMainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run () {
+                                        mButton2.setText("audio_dec_frm_cnt=" + mDecFrmCnt++);
+                                    }
+                                });
+                            }
+                            //mButton1.setText("dec_frm_cnt=" + mDecFrmCnt++);
+                            Log.d(TAG, "[output-buffer] buf_idx=" + idx + ", sz=" + out_sz + ", cnt=" + mDecFrmCnt++);
+                            mMediaCodec.releaseOutputBuffer(idx, false);
+                            mMuxerHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_OUT_BUF);
+                        } else {
+                            Log.d(TAG, "no decoded frame now...");
+                            mMuxerHandler.sendEmptyMessageDelayed(MSG_CODEC_DEQUEUE_OUT_BUF, 100);
+                        }
+                        break;
+                }
+            }
+        };
+
+        // prepare output file and extractor
+        // /storage/emulated/0/xcom/dji_x264.mp4 -> /storage/emulated/0/xcom/dji_x264.yuv/.pcm
+        mTrackType = type;
+        int idx = mVideoPath.lastIndexOf(".");
+        if (mTrackType == 0) {
+            mDstPath = mVideoPath.substring(0, idx).concat(".yuv");
+            Log.d(TAG, "write yuv to file(" + mDstPath + ")!");
+        } else {
+            mDstPath = mVideoPath.substring(0, idx).concat(".pcm");
+            Log.d(TAG, "write pcm to file(" + mDstPath + ")!");
+        }
+        File out_file = new File(mDstPath);
+        try {
+            mOutputStream = new FileOutputStream(out_file);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        mMediaFormat = mMediaExtractor.getTrackFormat(mTrackType);
+
+        String mime = mMediaFormat.getString(MediaFormat.KEY_MIME);
+        try {
+            mMediaCodec = MediaCodec.createDecoderByType(mime);
+            Log.d(TAG, "codec_name=" + mMediaCodec.getName());
+            mMediaCodec.configure(mMediaFormat, null, null, 0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        mMediaExtractor.selectTrack(mTrackType);
+    }
+
+    @Override
+    protected void onCreate(Bundle saveInstanceState) {
+        Log.d(TAG, "onCreate");
+        Log.d(TAG, "sdk_version=" + Build.VERSION.SDK_INT);
+
+        super.onCreate(saveInstanceState);
+        setContentView(R.layout.main_activity);
+
+        mButton0 = (Button) findViewById(R.id.button0);
+        mButton0.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                //intent.setType("image/*");        //选择图片
+                //intent.setType("audio/*");        //选择音频
+                intent.setType("video/*");        //选择视频
+                //intent.setType("video/*; image/*"); //同时选择视频和图片
+                //intent.setType("*/*");              //无类型限制
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(intent, 1);
+            }
+        });
+
+        mButton1 = (Button) findViewById(R.id.button1);
+        mButton1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mVideoPath == null) {
+                    Toast.makeText(MainActivity.this, "select video file firstly!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                mButton1.setText("extract video and decoding...");
+                prepare(0);
+                mCodecHandler.sendEmptyMessage(MSG_CODEC_START);
+                mMuxerHandler.sendEmptyMessage(MSG_MUXER_START);
+                //Toast.makeText(MainActivity.this, "extract video bitstream finished!", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        mButton2 = (Button) findViewById(R.id.button2);
+        mButton2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // may equal to 0 if no volatile -> no useful, BUG1
+                //if (mTrackCnt < 2) {
+                //    Log.w(TAG, "only have one track, no audio track! track_cnt=" + mTrackCnt);
+                //    Toast.makeText(MainActivity.this, "no audio track!", Toast.LENGTH_SHORT).show();
+                //    mButton2.setText("no audio track in this fille");
+                //    return;
+                //}
+                mButton2.setText("extract audio and decoding...");
+                prepare(1);
+                mCodecHandler.sendEmptyMessage(MSG_CODEC_START);
+                mMuxerHandler.sendEmptyMessage(MSG_MUXER_START);
+            }
+        });
+
+        mButton3 = (Button) findViewById(R.id.button3);
+        mButton3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.w(TAG, "quit Activity!");
+                finish();
+            }
+        });
+
+        mMainHandler = new Handler();
+    }
+
+    protected void onDestroy() {
+        Log.w(TAG, "onDestroy!");
+        super.onDestroy();
+    }
+}

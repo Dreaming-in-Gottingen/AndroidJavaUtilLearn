@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    tools:context="com.example.MainActivity">
+
+    <Button
+        android:id="@+id/button0"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:text="select file"
+	android:textColor="#000000"/>
+
+    <Button
+        android:id="@+id/button1"
+	android:layout_marginTop="20dp"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button0"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#00FF00"
+        android:text="extract video"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button2"
+	android:layout_marginTop="20dp"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#0000FF"
+        android:text="extract audio"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button3"
+	android:layout_marginTop="20dp"
+        android:layout_below="@+id/button2"
+        android:layout_centerInParent="true"
+        android:layout_width="200dp"
+        android:layout_height="40dp"
+        android:textColor="#FF0000"
+        android:text="exit"
+        android:textAllCaps="false"/>
+
+</RelativeLayout>
