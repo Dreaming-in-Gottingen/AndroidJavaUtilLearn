@@ -91,6 +91,9 @@ public class MainActivity extends Activity {
 
     private Handler mMainHandler;   // main handler update decoded frame count
 
+    private boolean mbDumpSupportedInputFormat = true;
+    private boolean mbDumpCurrentOutputFormat = true;
+
     private final int MSG_CODEC_START = 0;
     private final int MSG_CODEC_STOP = 1;
     private final int MSG_CODEC_DEQUEUE_IN_BUF = 2;
@@ -282,6 +285,7 @@ public class MainActivity extends Activity {
                         Log.d(TAG, "mInputBuffers.len=" + mInputBuffers.length + ", mOutputBuffers.len=" + mOutputBuffers.length);
                         mBufferInfo = new MediaCodec.BufferInfo();
                         mCodecHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_IN_BUF);
+                        mbDumpCurrentOutputFormat = true;
                         break;
                     case MSG_CODEC_STOP:
                         Log.d(TAG, "MSG_CODEC_STOT");
@@ -366,6 +370,10 @@ public class MainActivity extends Activity {
                                 mCodecHandler.sendEmptyMessage(MSG_CODEC_STOP);
                                 break;
                             }
+                            if (mbDumpCurrentOutputFormat == true) {
+                                Log.d(TAG, "output_format=" + mMediaCodec.getOutputFormat());
+                                mbDumpCurrentOutputFormat = false;
+                            }
                             int out_sz = mBufferInfo.size;
                             byte[] out_data = new byte[out_sz];
                             // for avc include many B frames, may MediaCodec INFO_OUTPUT_BUFFERS_CHANGED
@@ -397,6 +405,14 @@ public class MainActivity extends Activity {
                             //mButton1.setText("dec_frm_cnt=" + mDecFrmCnt++);
                             Log.d(TAG, "[output-buffer] buf_idx=" + idx + ", sz=" + out_sz + ", cnt=" + mDecFrmCnt++);
                             mMediaCodec.releaseOutputBuffer(idx, false);
+                            mMuxerHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_OUT_BUF);
+                        } else if (idx == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) { // for BUG2
+                            Log.w(TAG, "INFO_OUTPUT_BUFFERS_CHANGED happen! must getOutputBuffers again!");
+                            mOutputBuffers = mMediaCodec.getOutputBuffers();
+                            mMuxerHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_OUT_BUF);
+                        } else if (idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                            Log.w(TAG, "INFO_OUTPUT_FORMAT_CHANGED happen!");
+                            Log.w(TAG, "new_format=" + mMediaCodec.getOutputFormat());
                             mMuxerHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_OUT_BUF);
                         } else {
                             Log.d(TAG, "no decoded frame now...");
@@ -432,6 +448,9 @@ public class MainActivity extends Activity {
             mMediaCodec = MediaCodec.createDecoderByType(mime);
             Log.d(TAG, "codec_name=" + mMediaCodec.getName());
             mMediaCodec.configure(mMediaFormat, null, null, 0);
+            if (mbDumpSupportedInputFormat == true) {
+                Log.d(TAG, "supported_input_format=" + mMediaCodec.getInputFormat());
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
