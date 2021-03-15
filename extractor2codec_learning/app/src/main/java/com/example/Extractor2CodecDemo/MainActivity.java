@@ -288,7 +288,7 @@ public class MainActivity extends Activity {
                         mbDumpCurrentOutputFormat = true;
                         break;
                     case MSG_CODEC_STOP:
-                        Log.d(TAG, "MSG_CODEC_STOT");
+                        Log.d(TAG, "MSG_CODEC_STOP");
                         mMediaCodec.stop();
                         mMediaCodec.release();
                         mMediaCodec = null;
@@ -318,7 +318,10 @@ public class MainActivity extends Activity {
                             mMediaCodec.queueInputBuffer(idx, 0, size, pts, 0);
                             mCodecHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_IN_BUF);
                         } else {
-                            Log.w(TAG, "unknown error!");
+                            Log.w(TAG, "unknown error: no more data available!");
+                            Log.d(TAG, "seekTo start of file!");
+                            //mMediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+                            //mCodecHandler.sendEmptyMessage(MSG_CODEC_DEQUEUE_IN_BUF);
                             mCodecHandler.sendEmptyMessage(MSG_CODEC_STOP);
                         }
                         break;
@@ -341,8 +344,8 @@ public class MainActivity extends Activity {
                         Log.w(TAG, "MSG_MUXER_STOP");
 
                         //mMediaExtractor.stop(); // no this api
-                        mMediaExtractor.release();
-                        mMediaExtractor = null;
+                        //mMediaExtractor.release(); -> may use it again
+                        //mMediaExtractor = null;
 
                         mMainHandler.post(new Runnable() {
                             @Override
@@ -456,6 +459,11 @@ public class MainActivity extends Activity {
         }
 
         mMediaExtractor.selectTrack(mTrackType);
+        //Log.d(TAG, "seekTo start!");
+        //mMediaExtractor.seekTo(0, MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+
+        mExtractFrameCnt = 0; // from extractor
+        mDecFrmCnt = 0;       // from codec
     }
 
     @Override
@@ -520,6 +528,10 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 Log.w(TAG, "quit Activity!");
+                if (mMediaExtractor != null) {
+                    mMediaExtractor.release();
+                    mMediaExtractor = null;
+                }
                 finish();
             }
         });
