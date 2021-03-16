@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    tools:context="com.example.MediaPlayerDemo.MainActivity">
+
+    <SurfaceView
+        android:id="@+id/surview"
+        android:layout_centerHorizontal="true"
+        android:layout_centerInParent="true"
+        android:layout_above="@+id/button0"
+        android:layout_width="300dp"
+        android:layout_height="240dp"/>
+
+    <Button
+        android:id="@+id/button0"
+        android:layout_centerInParent="true"
+        android:layout_width="150dp"
+        android:layout_height="40dp"
+        android:textAllCaps="false"
+        android:text="select file"
+        android:textColor="#FF0000"/>
+
+    <Button
+        android:id="@+id/button1"
+        android:layout_marginTop="20dp"
+        android:layout_below="@+id/button0"
+        android:layout_alignLeft="@+id/surview"
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:textColor="#000000"
+        android:text="play"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_marginTop="20dp"
+        android:layout_below="@+id/button0"
+        android:layout_alignLeft="@+id/button0"
+        android:layout_width="70dp"
+        android:layout_height="40dp"
+        android:textColor="#000000"
+        android:text="pause"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_marginTop="20dp"
+        android:layout_below="@+id/button0"
+        android:layout_alignRight="@+id/button0"
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:textColor="#000000"
+        android:text="stop"
+        android:textAllCaps="false"/>
+
+    <Button
+        android:id="@+id/button4"
+        android:layout_marginTop="20dp"
+        android:layout_below="@+id/button0"
+        android:layout_alignRight="@+id/surview"
+        android:layout_width="70dp"
+        android:layout_height="40dp"
+        android:textColor="#000000"
+        android:text="reset"
+        android:textAllCaps="false"/>
+
+    <ProgressBar
+        android:id="@+id/bar"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@+id/surview"
+        android:layout_marginBottom="20dp"
+        android:layout_width="300dp"
+        android:layout_height="10dp"
+        android:max="100"
+        android:progress="30"
+        style="@android:style/Widget.ProgressBar.Horizontal"/>
+
+    <Button
+        android:id="@+id/button5"
+        android:layout_marginTop="20dp"
+        android:layout_below="@+id/button1"
+        android:layout_centerHorizontal="true"
+        android:layout_width="120dp"
+        android:layout_height="40dp"
+        android:textColor="#FF0000"
+        android:text="quit"
+        android:textAllCaps="false"/>
+
+</RelativeLayout>
