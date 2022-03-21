@@ -8,6 +8,20 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
+import android.database.Cursor;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
+import android.content.ContentUris;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.TextView.OnEditorActionListener;
+import android.view.inputmethod.EditorInfo;
+import android.view.KeyEvent;
+import android.widget.Toast;
+
 import android.os.HandlerThread;
 import android.os.Handler;
 import android.os.Message;
@@ -33,16 +47,23 @@ import java.nio.ByteBuffer;
 
 import java.util.Arrays;
 
+/* just test avc encoder */
 public class MainActivity extends Activity {
     private static final String TAG = "MediaCodecDemo";
-    private Button button0;
-    private Button button1;
-    private Button button2; // show encode counter
+    private Button button0; // state: "prepare"/"start"/"finished"
+    private Button button1; // "quit Activity"
+    private Button button2; // show encoded frame counter
+    private Button button3; // select yuv file
+    private EditText etWidth;
+    private EditText etHeight;
 
     private int mCurState = 0; // 0-uninitialized; 1-prepared; 2-running; 3-finished
     private int mEncFrmCnt = 0;
 
     private Handler mMainHandler;
+
+    private String mYuvPath;    // input yuv path
+    private String mBsPath;     // output bitstream path
 
     // feed yuv to MC's inport-buffer in this loop
     private HandlerThread mCodecThread; // queue MC input-buffer.
@@ -54,8 +75,15 @@ public class MainActivity extends Activity {
     InputStream mYuvStream;
     OutputStream mAvcStream;
 
-    private int mWidth = 640;
-    private int mHeight = 620;
+    // for statatistic encoding speed
+    private int mTotalFrameCnt;
+    private int mEncodingFps;
+    private int mEncodingDuraMilliSec;
+    private long mStartTime;
+    private long mStopTime;
+
+    private int mWidth = 1280;
+    private int mHeight = 720;
     private final String kMimeTypeAvc = "video/avc";
 
     private ByteBuffer[] mInputBuffers;
@@ -77,6 +105,28 @@ public class MainActivity extends Activity {
     private final int MSG_MUXER_STOP_READ_BS = 3;
 
     private void prepare() {
+
+        // check input yuv dimension and path
+        String width = etWidth.getText().toString();
+        String height = etHeight.getText().toString();
+        if (width.equals("") || height.equals("")) {
+            Toast.makeText(MainActivity.this, "must specify width & height before start!", Toast.LENGTH_LONG).show();
+            return;
+        } else {
+            Toast.makeText(MainActivity.this, "yuv dimension: " + width + " x " + height, Toast.LENGTH_LONG).show();
+            mWidth = Integer.parseInt(width);
+            mHeight = Integer.parseInt(height);
+            Log.d(TAG, "yuv size = " + mWidth + " x " + mHeight);
+        }
+
+        if (mYuvPath==null || mYuvPath.equals("")) {
+            Toast.makeText(MainActivity.this, "must specify input yuv file!", Toast.LENGTH_LONG).show();
+            return;
+        } else {
+            Log.d(TAG, "yuv path = " + mYuvPath);
+            Toast.makeText(MainActivity.this, "yuv path: " + mYuvPath, Toast.LENGTH_LONG).show();
+        }
+
         // prepare Codec handler
         mCodecThread = new HandlerThread("CodecThread");
         mCodecThread.start();
@@ -93,6 +143,7 @@ public class MainActivity extends Activity {
                         mCodecHandler.sendEmptyMessage(MSG_CODEC_QUEUE_BUF);
                         Log.d(TAG, "MSG_CODEC_START end");
                         mCurState = 2;
+                        mStartTime = System.nanoTime();
                         break;
                     case MSG_CODEC_QUEUE_BUF:
                         //Log.d(TAG, "MSG_CODEC_QUEUE_BUF");
@@ -126,6 +177,11 @@ public class MainActivity extends Activity {
                         mMediaCodec.stop();
                         mMediaCodec.release();
                         mCurState = 3;
+                        mStopTime = System.nanoTime();
+                        mEncodingDuraMilliSec = (int)((mStopTime - mStartTime)/1000000L);
+                        mEncodingFps = mTotalFrameCnt*1000/mEncodingDuraMilliSec;
+                        Log.d(TAG, "encoding speed=" + mEncodingFps + "fps, total frm_cnt=" + mTotalFrameCnt + ", dura=" + mEncodingDuraMilliSec + " ms");
+                        button2.setText("encoding speed=" + mEncodingFps + "fps, total frm_cnt=" + mTotalFrameCnt + ", dura=" + mEncodingDuraMilliSec + "ms");
                         break;
                     default:
                         Log.d(TAG, "unknown case! should never happen!");
@@ -242,9 +298,9 @@ public class MainActivity extends Activity {
         Log.d(TAG, "state:" + state + ", ext_mounted:" + ext_mounted);
         String dir_path;
         if (ext_mounted == true) {
-            dir_path = EnvironmentEx.getExternalStoragePath().toString() + "/zjz";
+            dir_path = EnvironmentEx.getExternalStoragePath().toString() + "/MediaCodecDemo";
         } else {
-            dir_path = EnvironmentEx.getInternalStoragePath().toString() + "/zjz";
+            dir_path = EnvironmentEx.getInternalStoragePath().toString() + "/MediaCodecDemo";
         }
         Log.d(TAG, "dir_path:" + dir_path);
 
@@ -256,18 +312,25 @@ public class MainActivity extends Activity {
                 Log.d(TAG, "    [" + i + "]: " + lists[i].getName());
 
             try {
-                String src_yuv = lists[0].getPath();
-                Log.d(TAG, "read from file(" + src_yuv + ") to feed MediaCodec!");
-                File f_in = new File(src_yuv);
+                //String src_yuv = lists[0].getPath();
+                //Log.d(TAG, "read from file(" + src_yuv + ") to feed MediaCodec!");
+                //File f_in = new File(src_yuv);
+                Log.d(TAG, "read from file(" + mYuvPath + ") to feed MediaCodec!");
+                File f_in = new File(mYuvPath);
                 mYuvStream = new FileInputStream(f_in);
 
+
                 String dst_avc = dir_path + "/output.h264";
-                Log.d(TAG, "write h264 to file(" + dst_avc + ")!");
+                Log.d(TAG, "encode by h.264, and write bistream to file(" + dst_avc + ")!");
                 File f_out = new File(dst_avc);
                 mAvcStream = new FileOutputStream(f_out);
 
                 mPicSz = mWidth * mHeight * 3 >> 1;
                 mByteArray = new byte[mPicSz];
+
+                long file_len = f_in.length();
+                mTotalFrameCnt = (int)(file_len/mPicSz);
+                Log.d(TAG, "input yuv length=" + file_len + ", total frame cnt=" + mTotalFrameCnt);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
@@ -295,6 +358,151 @@ public class MainActivity extends Activity {
         mEncFrmCnt = 0;
     }
 
+///////////////////////////////////////////////////////////////////////////////////
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode == Activity.RESULT_OK) {
+            Log.d(TAG, "result data: " + data);
+            Uri uri = data.getData();
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
+                String path = uri.getPath();
+            }
+            Log.d(TAG, "Scheme:" + uri.getScheme());
+            Log.d(TAG, "Path:" + uri.getPath());
+            Log.d(TAG, "Authority:" + uri.getAuthority());
+
+            String path;
+            //get real absolute path
+            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
+                mYuvPath = getPath(this, uri);
+            } else {//4.4以下下系统调用方法
+                mYuvPath = getRealPathFromURI(uri);
+            }
+            Log.d(TAG, "after parse uri, video absolute path=" + mYuvPath);
+        }
+    }
+
+    public String getRealPathFromURI(Uri contentUri) {
+        String res = null;
+        String[] proj = { MediaStore.Images.Media.DATA };
+        Cursor cursor = getContentResolver().query(contentUri, proj, null, null, null);
+        if(null!=cursor&&cursor.moveToFirst()){;
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            res = cursor.getString(column_index);
+            cursor.close();
+        }
+        return res;
+    }
+
+    public String getPath(final Context context, final Uri uri) {
+        final boolean isKitKat = Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT;
+
+        // DocumentProvider
+        if (isKitKat && DocumentsContract.isDocumentUri(context, uri)) {
+            // ExternalStorageProvider
+            if (isExternalStorageDocument(uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                if ("primary".equalsIgnoreCase(type)) {
+                    return Environment.getExternalStorageDirectory() + "/" + split[1];
+                }
+            }
+            // DownloadsProvider
+            else if (isDownloadsDocument(uri)) {
+                final String id = DocumentsContract.getDocumentId(uri);
+                final Uri contentUri = ContentUris.withAppendedId(
+                        Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+
+                return getDataColumn(context, contentUri, null, null);
+            }
+            // MediaProvider
+            else if (isMediaDocument(uri)) {
+                final String docId = DocumentsContract.getDocumentId(uri);
+                final String[] split = docId.split(":");
+                final String type = split[0];
+
+                Uri contentUri = null;
+                if ("image".equals(type)) {
+                    contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                } else if ("video".equals(type)) {
+                    contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                } else if ("audio".equals(type)) {
+                    contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                }
+
+                final String selection = "_id=?";
+                final String[] selectionArgs = new String[]{split[1]};
+
+                return getDataColumn(context, contentUri, selection, selectionArgs);
+            }
+        }
+        // MediaStore (and general)
+        else if ("content".equalsIgnoreCase(uri.getScheme())) {
+            return getDataColumn(context, uri, null, null);
+        }
+        // File
+        else if ("file".equalsIgnoreCase(uri.getScheme())) {
+            return uri.getPath();
+        }
+        return null;
+    }
+
+     /**
+      * Get the value of the data column for this Uri. This is useful for
+      * MediaStore Uris, and other file-based ContentProviders.
+      *
+      * @param context       The context.
+      * @param uri           The Uri to query.
+      * @param selection     (Optional) Filter used in the query.
+      * @param selectionArgs (Optional) Selection arguments used in the query.
+      * @return The value of the _data column, which is typically a file path.
+      */
+    public String getDataColumn(Context context, Uri uri, String selection, String[] selectionArgs) {
+        Cursor cursor = null;
+        final String column = "_data";
+        final String[] projection = {column};
+
+        try {
+            cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                final int column_index = cursor.getColumnIndexOrThrow(column);
+                return cursor.getString(column_index);
+            }
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
+        return null;
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is ExternalStorageProvider.
+     */
+    public boolean isExternalStorageDocument(Uri uri) {
+        return "com.android.externalstorage.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is DownloadsProvider.
+     */
+    public boolean isDownloadsDocument(Uri uri) {
+        return "com.android.providers.downloads.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * @param uri The Uri to check.
+     * @return Whether the Uri authority is MediaProvider.
+     */
+    public boolean isMediaDocument(Uri uri) {
+        return "com.android.providers.media.documents".equals(uri.getAuthority());
+    }
+///////////////////////////////////////////////////////////////////////////////////
+
+
     @Override
     protected void onCreate(Bundle saveInstanceState) {
         Log.d(TAG, "onCreate");
@@ -302,6 +510,47 @@ public class MainActivity extends Activity {
         setContentView(R.layout.main_activity);
 
         mMainHandler = new Handler();
+
+        button3 = (Button) findViewById(R.id.button3);
+        button3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                //intent.setType("image/*");        //选择图片
+                //intent.setType("audio/*");        //选择音频
+                //intent.setType("video/*");        //选择视频
+                //intent.setType("video/*; image/*"); //同时选择视频和图片
+                intent.setType("*/*");              //无类型限制
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(intent, 1);
+            }
+        });
+
+        etWidth = (EditText)findViewById(R.id.edt_width);
+        etWidth.setOnEditorActionListener(new OnEditorActionListener() {
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_NEXT) {
+                    String width = etWidth.getText().toString();
+                    Toast.makeText(MainActivity.this, "yuv width=" + width, Toast.LENGTH_LONG).show();
+                    //handled = true;
+                }
+                return handled;
+            }
+        });
+
+        etHeight = (EditText)findViewById(R.id.edt_height);
+        etHeight.setOnEditorActionListener(new OnEditorActionListener() {
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    String height = etHeight.getText().toString();
+                    Toast.makeText(MainActivity.this, "yuv height=" + height, Toast.LENGTH_LONG).show();
+                    //handled = true;
+                }
+                return handled;
+            }
+        });
 
         // init button
         button0 = (Button) findViewById(R.id.button0);

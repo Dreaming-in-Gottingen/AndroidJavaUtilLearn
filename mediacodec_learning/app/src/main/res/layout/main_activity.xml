@@ -7,12 +7,46 @@
     tools:context="com.example.MainActivity">
 
     <Button
-        android:id="@+id/button0"
+        android:id="@+id/button3"
         android:layout_centerInParent="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAllCaps="false"
-	android:textColor="#000000"/>
+        android:text="select input yuv file"
+        android:textColor="#000000"/>
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/button3"
+        android:hint="key in yuv width"
+        android:imeOptions="actionNext"
+        android:inputType="number"
+        android:textSize="20dp"
+        android:textAllCaps="false"
+        android:id="@+id/edt_width"/>
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/edt_width"
+        android:hint="key in yuv height"
+        android:imeOptions="actionDone"
+        android:inputType="number"
+        android:textSize="20dp"
+        android:textAllCaps="false"
+        android:id="@+id/edt_height"/>
+
+    <Button
+        android:id="@+id/button0"
+        android:layout_centerInParent="true"
+        android:layout_below="@+id/edt_height"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="false"
+        android:textColor="#000000"/>
 
     <Button
         android:id="@+id/button1"
@@ -25,8 +59,8 @@
 
     <Button
         android:id="@+id/button2"
-	android:layout_marginTop="20dp"
-        android:layout_above="@+id/button0"
+        android:layout_marginTop="20dp"
+        android:layout_above="@+id/button3"
         android:layout_centerInParent="true"
         android:layout_width="130dp"
         android:layout_height="50dp"
